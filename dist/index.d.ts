@@ -38,6 +38,9 @@ export interface RunByokOptions {
 }
 export interface ByokUsage {
     inputTokens: number | null;
+    noCacheInputTokens: number | null;
+    cacheReadTokens: number | null;
+    cacheWriteTokens: number | null;
     outputTokens: number | null;
     totalTokens: number | null;
 }

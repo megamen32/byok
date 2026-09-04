@@ -126,6 +126,9 @@ export interface RunByokOptions {
 
 export interface ByokUsage {
   inputTokens: number | null
+  noCacheInputTokens: number | null
+  cacheReadTokens: number | null
+  cacheWriteTokens: number | null
   outputTokens: number | null
   totalTokens: number | null
 }
@@ -135,11 +138,23 @@ export interface ByokRunResult {
   usage: ByokUsage
 }
 
-function normalizeUsage(usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined): ByokUsage {
+function normalizeUsage(usage: {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+  inputTokenDetails?: {
+    noCacheTokens?: number
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
+  }
+} | undefined): ByokUsage {
   const inputTokens = typeof usage?.inputTokens === 'number' ? usage.inputTokens : null
+  const noCacheInputTokens = typeof usage?.inputTokenDetails?.noCacheTokens === 'number' ? usage.inputTokenDetails.noCacheTokens : null
+  const cacheReadTokens = typeof usage?.inputTokenDetails?.cacheReadTokens === 'number' ? usage.inputTokenDetails.cacheReadTokens : null
+  const cacheWriteTokens = typeof usage?.inputTokenDetails?.cacheWriteTokens === 'number' ? usage.inputTokenDetails.cacheWriteTokens : null
   const outputTokens = typeof usage?.outputTokens === 'number' ? usage.outputTokens : null
   const totalTokens = typeof usage?.totalTokens === 'number' ? usage.totalTokens : (inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null)
-  return { inputTokens, outputTokens, totalTokens }
+  return { inputTokens, noCacheInputTokens, cacheReadTokens, cacheWriteTokens, outputTokens, totalTokens }
 }
 
 export async function runByokModelDetailed(

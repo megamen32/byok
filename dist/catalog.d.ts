@@ -10,6 +10,8 @@ export type ByokPreset = {
     maxInputTokens: number | null;
     maxOutputTokens: number | null;
     inputPricePerMillionUsd: number | null;
+    cacheReadPricePerMillionUsd: number | null;
+    cacheWritePricePerMillionUsd: number | null;
     outputPricePerMillionUsd: number | null;
     inputTypes: string[];
     outputTypes: string[];
@@ -28,6 +30,13 @@ export declare const MODELS_DEV_URL = "https://models.dev/api.json";
 export declare const fallbackByokPresets: ByokPreset[];
 export declare function buildByokPresetsFromModelsDev(payload: unknown): ByokPreset[];
 export declare function estimateCostUsd(inputTokens: number, outputTokens: number, preset: Pick<ByokPreset, 'inputPricePerMillionUsd' | 'outputPricePerMillionUsd'>): number | null;
+export declare function calculateUsageCostUsd(usage: {
+    inputTokens: number | null;
+    noCacheInputTokens?: number | null;
+    cacheReadTokens?: number | null;
+    cacheWriteTokens?: number | null;
+    outputTokens: number | null;
+}, prices: Pick<ByokPreset, 'inputPricePerMillionUsd' | 'cacheReadPricePerMillionUsd' | 'cacheWritePricePerMillionUsd' | 'outputPricePerMillionUsd'>): number | null;
 export declare function calculateAvailableInputTokens(values: {
     contextWindow: number | null;
     maxInputTokens: number | null;

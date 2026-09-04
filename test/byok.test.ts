@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { assertSafeProviderUrl, publicLookupResult } from '../src/index'
-import { buildByokPresetsFromModelsDev, calculateAvailableInputTokens, estimateCostUsd, fallbackByokPresets } from '../src/catalog'
+import { buildByokPresetsFromModelsDev, calculateAvailableInputTokens, calculateUsageCostUsd, estimateCostUsd, fallbackByokPresets } from '../src/catalog'
 
 describe('safe provider URL', () => {
   test('rejects localhost/private/http', async () => {
@@ -19,6 +19,9 @@ describe('safe provider URL', () => {
 describe('catalog', () => {
   test('estimates cost', () => {
     expect(estimateCostUsd(10_000, 2_000, { inputPricePerMillionUsd: 0.3, outputPricePerMillionUsd: 1.2 })).toBeCloseTo(0.0054)
+  })
+  test('prices cache hits separately', () => {
+    expect(calculateUsageCostUsd({ inputTokens: 10000, noCacheInputTokens: 2000, cacheReadTokens: 8000, cacheWriteTokens: 0, outputTokens: 2000 }, { inputPricePerMillionUsd: 5, cacheReadPricePerMillionUsd: 0.5, cacheWritePricePerMillionUsd: null, outputPricePerMillionUsd: 30 })).toBeCloseTo(0.074)
   })
   test('calculates available input tokens', () => {
     expect(calculateAvailableInputTokens({ contextWindow: 100_000, maxInputTokens: 80_000, requestedOutputTokens: 30_000 })).toBe(70_000)

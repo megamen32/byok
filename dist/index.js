@@ -111,9 +111,12 @@ function createPinnedFetch(lookup) {
 }
 function normalizeUsage(usage) {
   const inputTokens = typeof usage?.inputTokens === "number" ? usage.inputTokens : null;
+  const noCacheInputTokens = typeof usage?.inputTokenDetails?.noCacheTokens === "number" ? usage.inputTokenDetails.noCacheTokens : null;
+  const cacheReadTokens = typeof usage?.inputTokenDetails?.cacheReadTokens === "number" ? usage.inputTokenDetails.cacheReadTokens : null;
+  const cacheWriteTokens = typeof usage?.inputTokenDetails?.cacheWriteTokens === "number" ? usage.inputTokenDetails.cacheWriteTokens : null;
   const outputTokens = typeof usage?.outputTokens === "number" ? usage.outputTokens : null;
   const totalTokens = typeof usage?.totalTokens === "number" ? usage.totalTokens : inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null;
-  return { inputTokens, outputTokens, totalTokens };
+  return { inputTokens, noCacheInputTokens, cacheReadTokens, cacheWriteTokens, outputTokens, totalTokens };
 }
 async function runByokModelDetailed(rawConfig, input, dependencies = {}) {
   const config = byokConfigSchema.parse(rawConfig);
