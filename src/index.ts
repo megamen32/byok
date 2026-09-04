@@ -124,7 +124,25 @@ export interface RunByokOptions {
   messages?: ModelMessage[]
 }
 
-export async function runByokModel(
+export interface ByokUsage {
+  inputTokens: number | null
+  outputTokens: number | null
+  totalTokens: number | null
+}
+
+export interface ByokRunResult {
+  text: string
+  usage: ByokUsage
+}
+
+function normalizeUsage(usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined): ByokUsage {
+  const inputTokens = typeof usage?.inputTokens === 'number' ? usage.inputTokens : null
+  const outputTokens = typeof usage?.outputTokens === 'number' ? usage.outputTokens : null
+  const totalTokens = typeof usage?.totalTokens === 'number' ? usage.totalTokens : (inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null)
+  return { inputTokens, outputTokens, totalTokens }
+}
+
+export async function runByokModelDetailed(
   rawConfig: ByokConfig,
   input: string | RunByokOptions,
   dependencies: { fetch?: typeof globalThis.fetch; lookup?: ByokLookup } = {},
@@ -159,38 +177,46 @@ export async function runByokModel(
         : effort
           ? { effort: effort === 'minimal' ? 'low' : effort }
           : undefined
-      const { text } = await generateText({
+      const result = await generateText({
         model: anthropic(config.modelId),
         ...generationInput,
         maxOutputTokens: config.maxOutputTokens,
         providerOptions: anthropicOptions ? ({ anthropic: anthropicOptions } as never) : undefined,
       })
-      if (!text.trim()) throw new Error('Provider returned an empty answer')
-      return text.trim()
+      if (!result.text.trim()) throw new Error('Provider returned an empty answer')
+      return { text: result.text.trim(), usage: normalizeUsage(result.usage) }
     }
 
     if (config.apiFormat === 'responses') {
       const responses = createOpenResponses({ name: 'byok', apiKey: config.apiKey, url: endpoint(baseUrl, 'responses'), fetch: safeFetch })
-      const { text } = await generateText({
+      const result = await generateText({
         model: responses(config.modelId),
         ...generationInput,
         maxOutputTokens: config.maxOutputTokens,
         providerOptions: effort ? { byok: { reasoningEffort: effort } satisfies OpenResponsesLanguageModelOptions } : undefined,
       })
-      if (!text.trim()) throw new Error('Provider returned an empty answer')
-      return text.trim()
+      if (!result.text.trim()) throw new Error('Provider returned an empty answer')
+      return { text: result.text.trim(), usage: normalizeUsage(result.usage) }
     }
 
     const chat = createOpenAICompatible({ name: 'byok', apiKey: config.apiKey, baseURL: baseUrl, fetch: safeFetch })
-    const { text } = await generateText({
+    const result = await generateText({
       model: chat.chatModel(config.modelId),
       ...generationInput,
       maxOutputTokens: config.maxOutputTokens,
       providerOptions: effort ? { byok: { reasoningEffort: effort } } : undefined,
     })
-    if (!text.trim()) throw new Error('Provider returned an empty answer')
-    return text.trim()
+    if (!result.text.trim()) throw new Error('Provider returned an empty answer')
+    return { text: result.text.trim(), usage: normalizeUsage(result.usage) }
   } finally {
     await pinned?.close()
   }
+}
+
+export async function runByokModel(
+  rawConfig: ByokConfig,
+  input: string | RunByokOptions,
+  dependencies: { fetch?: typeof globalThis.fetch; lookup?: ByokLookup } = {},
+): Promise<string> {
+  return (await runByokModelDetailed(rawConfig, input, dependencies)).text
 }

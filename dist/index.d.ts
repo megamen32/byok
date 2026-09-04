@@ -36,6 +36,22 @@ export interface RunByokOptions {
     prompt?: string;
     messages?: ModelMessage[];
 }
+export interface ByokUsage {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+}
+export interface ByokRunResult {
+    text: string;
+    usage: ByokUsage;
+}
+export declare function runByokModelDetailed(rawConfig: ByokConfig, input: string | RunByokOptions, dependencies?: {
+    fetch?: typeof globalThis.fetch;
+    lookup?: ByokLookup;
+}): Promise<{
+    text: string;
+    usage: ByokUsage;
+}>;
 export declare function runByokModel(rawConfig: ByokConfig, input: string | RunByokOptions, dependencies?: {
     fetch?: typeof globalThis.fetch;
     lookup?: ByokLookup;

@@ -109,7 +109,13 @@ function createPinnedFetch(lookup) {
   };
   return { fetch, close };
 }
-async function runByokModel(rawConfig, input, dependencies = {}) {
+function normalizeUsage(usage) {
+  const inputTokens = typeof usage?.inputTokens === "number" ? usage.inputTokens : null;
+  const outputTokens = typeof usage?.outputTokens === "number" ? usage.outputTokens : null;
+  const totalTokens = typeof usage?.totalTokens === "number" ? usage.totalTokens : inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null;
+  return { inputTokens, outputTokens, totalTokens };
+}
+async function runByokModelDetailed(rawConfig, input, dependencies = {}) {
   const config = byokConfigSchema.parse(rawConfig);
   const lookup = dependencies.lookup ?? defaultLookup;
   const baseUrl = await assertSafeProviderUrl(config.baseUrl, lookup);
@@ -132,43 +138,47 @@ async function runByokModel(rawConfig, input, dependencies = {}) {
     if (config.apiFormat === "anthropic") {
       const anthropic = createAnthropic({ apiKey: config.apiKey, baseURL: baseUrl, fetch: safeFetch });
       const anthropicOptions = effort === "none" ? { thinking: { type: "disabled" } } : effort ? { effort: effort === "minimal" ? "low" : effort } : undefined;
-      const { text: text2 } = await generateText({
+      const result2 = await generateText({
         model: anthropic(config.modelId),
         ...generationInput,
         maxOutputTokens: config.maxOutputTokens,
         providerOptions: anthropicOptions ? { anthropic: anthropicOptions } : undefined
       });
-      if (!text2.trim())
+      if (!result2.text.trim())
         throw new Error("Provider returned an empty answer");
-      return text2.trim();
+      return { text: result2.text.trim(), usage: normalizeUsage(result2.usage) };
     }
     if (config.apiFormat === "responses") {
       const responses = createOpenResponses({ name: "byok", apiKey: config.apiKey, url: endpoint(baseUrl, "responses"), fetch: safeFetch });
-      const { text: text2 } = await generateText({
+      const result2 = await generateText({
         model: responses(config.modelId),
         ...generationInput,
         maxOutputTokens: config.maxOutputTokens,
         providerOptions: effort ? { byok: { reasoningEffort: effort } } : undefined
       });
-      if (!text2.trim())
+      if (!result2.text.trim())
         throw new Error("Provider returned an empty answer");
-      return text2.trim();
+      return { text: result2.text.trim(), usage: normalizeUsage(result2.usage) };
     }
     const chat = createOpenAICompatible({ name: "byok", apiKey: config.apiKey, baseURL: baseUrl, fetch: safeFetch });
-    const { text } = await generateText({
+    const result = await generateText({
       model: chat.chatModel(config.modelId),
       ...generationInput,
       maxOutputTokens: config.maxOutputTokens,
       providerOptions: effort ? { byok: { reasoningEffort: effort } } : undefined
     });
-    if (!text.trim())
+    if (!result.text.trim())
       throw new Error("Provider returned an empty answer");
-    return text.trim();
+    return { text: result.text.trim(), usage: normalizeUsage(result.usage) };
   } finally {
     await pinned?.close();
   }
 }
+async function runByokModel(rawConfig, input, dependencies = {}) {
+  return (await runByokModelDetailed(rawConfig, input, dependencies)).text;
+}
 export {
+  runByokModelDetailed,
   runByokModel,
   reasoningEfforts,
   publicLookupResult,
