@@ -126,7 +126,10 @@ async function runByokModelDetailed(rawConfig, input, dependencies = {}) {
   const transport = dependencies.fetch ?? pinned.fetch;
   const safeFetch = async (request, init) => {
     await assertSafeProviderUrl(String(request), lookup);
-    return transport(request, { ...init, redirect: "manual" });
+    const timeoutMs = dependencies.timeoutMs ?? 120000;
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const signal = init?.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+    return transport(request, { ...init, redirect: "manual", signal });
   };
   const effort = config.reasoningEffort === "default" ? undefined : config.reasoningEffort;
   const options = typeof input === "string" ? { prompt: input } : input;

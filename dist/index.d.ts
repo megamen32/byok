@@ -51,6 +51,7 @@ export interface ByokRunResult {
 export declare function runByokModelDetailed(rawConfig: ByokConfig, input: string | RunByokOptions, dependencies?: {
     fetch?: typeof globalThis.fetch;
     lookup?: ByokLookup;
+    timeoutMs?: number;
 }): Promise<{
     text: string;
     usage: ByokUsage;
@@ -58,5 +59,6 @@ export declare function runByokModelDetailed(rawConfig: ByokConfig, input: strin
 export declare function runByokModel(rawConfig: ByokConfig, input: string | RunByokOptions, dependencies?: {
     fetch?: typeof globalThis.fetch;
     lookup?: ByokLookup;
+    timeoutMs?: number;
 }): Promise<string>;
 export {};

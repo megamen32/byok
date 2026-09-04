@@ -160,7 +160,7 @@ function normalizeUsage(usage: {
 export async function runByokModelDetailed(
   rawConfig: ByokConfig,
   input: string | RunByokOptions,
-  dependencies: { fetch?: typeof globalThis.fetch; lookup?: ByokLookup } = {},
+  dependencies: { fetch?: typeof globalThis.fetch; lookup?: ByokLookup; timeoutMs?: number } = {},
 ) {
   const config = byokConfigSchema.parse(rawConfig)
   const lookup = dependencies.lookup ?? defaultLookup
@@ -169,7 +169,10 @@ export async function runByokModelDetailed(
   const transport = dependencies.fetch ?? pinned!.fetch
   const safeFetch: typeof globalThis.fetch = async (request, init) => {
     await assertSafeProviderUrl(String(request), lookup)
-    return transport(request, { ...init, redirect: 'manual' })
+    const timeoutMs = dependencies.timeoutMs ?? 120_000
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
+    const signal = init?.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal
+    return transport(request, { ...init, redirect: 'manual', signal })
   }
   const effort = config.reasoningEffort === 'default' ? undefined : config.reasoningEffort
   const options = typeof input === 'string' ? { prompt: input } : input
@@ -231,7 +234,7 @@ export async function runByokModelDetailed(
 export async function runByokModel(
   rawConfig: ByokConfig,
   input: string | RunByokOptions,
-  dependencies: { fetch?: typeof globalThis.fetch; lookup?: ByokLookup } = {},
+  dependencies: { fetch?: typeof globalThis.fetch; lookup?: ByokLookup; timeoutMs?: number } = {},
 ): Promise<string> {
   return (await runByokModelDetailed(rawConfig, input, dependencies)).text
 }
