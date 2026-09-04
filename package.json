@@ -1,0 +1,49 @@
+{
+  "name": "@bezrabotnyi/byok",
+  "version": "1.0.0",
+  "description": "Reusable Bring Your Own Key layer for Node.js AI apps: provider presets, pricing metadata, SSRF-safe endpoints, and AI SDK adapters.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": ["dist", "README.md", "LICENSE"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "import": "./dist/catalog.js"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "bun run clean && bun build src/index.ts src/catalog.ts --outdir dist --target node --format esm --external '*' && tsc -p tsconfig.json",
+    "test": "bun test",
+    "prepack": "bun run build && bun test"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "4.0.47",
+    "@ai-sdk/open-responses": "2.0.37",
+    "@ai-sdk/openai-compatible": "3.0.42",
+    "ai": "7.0.89",
+    "ipaddr.js": "2.5.0",
+    "undici": "7.29.0",
+    "zod": "^4.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/megamen32/byok.git"
+  },
+  "bugs": {
+    "url": "https://github.com/megamen32/byok/issues"
+  },
+  "homepage": "https://github.com/megamen32/byok#readme"
+}
