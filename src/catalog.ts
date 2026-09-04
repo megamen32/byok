@@ -19,6 +19,15 @@ export type ByokPreset = {
   catalogModelId?: string
 }
 
+
+export type ByokCatalogResponse = {
+  presets: ByokPreset[]
+  source: 'models.dev' | 'bundled-fallback' | 'fallback'
+  sourceUrl: string
+  fetchedAt: string
+  degraded?: boolean
+}
+
 export const MODELS_DEV_URL = 'https://models.dev/api.json'
 
 export const fallbackByokPresets: ByokPreset[] = [
@@ -29,6 +38,8 @@ export const fallbackByokPresets: ByokPreset[] = [
   { id: 'minimax', label: 'MiniMax', description: 'MiniMax через Anthropic-compatible API', apiFormat: 'anthropic', baseUrl: 'https://api.minimax.io/anthropic/v1', modelId: 'MiniMax-M3', contextWindow: 1_048_576, maxInputTokens: null, maxOutputTokens: 512_000, inputPricePerMillionUsd: 0.3, outputPricePerMillionUsd: 1.2, inputTypes: ['text','image','video'], outputTypes: ['text'], catalogProviderId: 'minimax', catalogModelId: 'MiniMax-M3' },
   { id: 'deepseek', label: 'DeepSeek', description: 'DeepSeek через OpenAI-compatible API', apiFormat: 'chat-completions', baseUrl: 'https://api.deepseek.com', modelId: 'deepseek-v4-pro', contextWindow: 1_000_000, maxInputTokens: null, maxOutputTokens: 384_000, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ['text'], outputTypes: ['text'], catalogProviderId: 'deepseek', catalogModelId: 'deepseek-v4-pro' },
   { id: 'moonshot', label: 'Kimi / Moonshot', description: 'Kimi через OpenAI-compatible API', apiFormat: 'chat-completions', baseUrl: 'https://api.moonshot.ai/v1', modelId: 'kimi-k3', contextWindow: 1_048_576, maxInputTokens: null, maxOutputTokens: 131_072, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ['text','image','video'], outputTypes: ['text'], catalogProviderId: 'moonshotai', catalogModelId: 'kimi-k3' },
+  { id: 'tencent-hy3', label: 'Tencent Hy3', description: 'Hy3 через Tencent TokenHub', apiFormat: 'chat-completions', baseUrl: 'https://tokenhub.tencentmaas.com/v1', modelId: 'hy3', contextWindow: 256_000, maxInputTokens: null, maxOutputTokens: 64_000, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ['text'], outputTypes: ['text'], catalogProviderId: 'tencent-tokenhub', catalogModelId: 'hy3' },
+  { id: 'opencode', label: 'OpenCode / свой gateway', description: 'OpenCode — клиент; укажите API endpoint его провайдера', apiFormat: 'chat-completions', baseUrl: '', modelId: '', contextWindow: null, maxInputTokens: null, maxOutputTokens: null, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ['text'], outputTypes: ['text'], note: 'OpenCode не является моделью или API-провайдером, поэтому Base URL и Model ID задаются вручную.' },
 ]
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -65,4 +76,15 @@ export function buildByokPresetsFromModelsDev(payload: unknown): ByokPreset[] {
 export function estimateCostUsd(inputTokens: number, outputTokens: number, preset: Pick<ByokPreset, 'inputPricePerMillionUsd' | 'outputPricePerMillionUsd'>) {
   if (preset.inputPricePerMillionUsd == null || preset.outputPricePerMillionUsd == null) return null
   return (Math.max(0,inputTokens) / 1_000_000) * preset.inputPricePerMillionUsd + (Math.max(0,outputTokens) / 1_000_000) * preset.outputPricePerMillionUsd
+}
+
+
+export function calculateAvailableInputTokens(values: {
+  contextWindow: number | null
+  maxInputTokens: number | null
+  requestedOutputTokens: number
+}) {
+  if (!values.contextWindow || !Number.isFinite(values.requestedOutputTokens)) return null
+  const remainingContext = Math.max(0, values.contextWindow - Math.max(0, values.requestedOutputTokens))
+  return values.maxInputTokens ? Math.min(values.maxInputTokens, remainingContext) : remainingContext
 }

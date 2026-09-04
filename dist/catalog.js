@@ -7,7 +7,9 @@ var fallbackByokPresets = [
   { id: "zai", label: "Z.ai", description: "GLM через OpenAI-compatible API", apiFormat: "chat-completions", baseUrl: "https://api.z.ai/api/paas/v4", modelId: "glm-5.3", contextWindow: 1e6, maxInputTokens: null, maxOutputTokens: 131072, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ["text"], outputTypes: ["text"], catalogProviderId: "zai", catalogModelId: "glm-5.3" },
   { id: "minimax", label: "MiniMax", description: "MiniMax через Anthropic-compatible API", apiFormat: "anthropic", baseUrl: "https://api.minimax.io/anthropic/v1", modelId: "MiniMax-M3", contextWindow: 1048576, maxInputTokens: null, maxOutputTokens: 512000, inputPricePerMillionUsd: 0.3, outputPricePerMillionUsd: 1.2, inputTypes: ["text", "image", "video"], outputTypes: ["text"], catalogProviderId: "minimax", catalogModelId: "MiniMax-M3" },
   { id: "deepseek", label: "DeepSeek", description: "DeepSeek через OpenAI-compatible API", apiFormat: "chat-completions", baseUrl: "https://api.deepseek.com", modelId: "deepseek-v4-pro", contextWindow: 1e6, maxInputTokens: null, maxOutputTokens: 384000, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ["text"], outputTypes: ["text"], catalogProviderId: "deepseek", catalogModelId: "deepseek-v4-pro" },
-  { id: "moonshot", label: "Kimi / Moonshot", description: "Kimi через OpenAI-compatible API", apiFormat: "chat-completions", baseUrl: "https://api.moonshot.ai/v1", modelId: "kimi-k3", contextWindow: 1048576, maxInputTokens: null, maxOutputTokens: 131072, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ["text", "image", "video"], outputTypes: ["text"], catalogProviderId: "moonshotai", catalogModelId: "kimi-k3" }
+  { id: "moonshot", label: "Kimi / Moonshot", description: "Kimi через OpenAI-compatible API", apiFormat: "chat-completions", baseUrl: "https://api.moonshot.ai/v1", modelId: "kimi-k3", contextWindow: 1048576, maxInputTokens: null, maxOutputTokens: 131072, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ["text", "image", "video"], outputTypes: ["text"], catalogProviderId: "moonshotai", catalogModelId: "kimi-k3" },
+  { id: "tencent-hy3", label: "Tencent Hy3", description: "Hy3 через Tencent TokenHub", apiFormat: "chat-completions", baseUrl: "https://tokenhub.tencentmaas.com/v1", modelId: "hy3", contextWindow: 256000, maxInputTokens: null, maxOutputTokens: 64000, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ["text"], outputTypes: ["text"], catalogProviderId: "tencent-tokenhub", catalogModelId: "hy3" },
+  { id: "opencode", label: "OpenCode / свой gateway", description: "OpenCode — клиент; укажите API endpoint его провайдера", apiFormat: "chat-completions", baseUrl: "", modelId: "", contextWindow: null, maxInputTokens: null, maxOutputTokens: null, inputPricePerMillionUsd: null, outputPricePerMillionUsd: null, inputTypes: ["text"], outputTypes: ["text"], note: "OpenCode не является моделью или API-провайдером, поэтому Base URL и Model ID задаются вручную." }
 ];
 function record(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -50,9 +52,16 @@ function estimateCostUsd(inputTokens, outputTokens, preset) {
     return null;
   return Math.max(0, inputTokens) / 1e6 * preset.inputPricePerMillionUsd + Math.max(0, outputTokens) / 1e6 * preset.outputPricePerMillionUsd;
 }
+function calculateAvailableInputTokens(values) {
+  if (!values.contextWindow || !Number.isFinite(values.requestedOutputTokens))
+    return null;
+  const remainingContext = Math.max(0, values.contextWindow - Math.max(0, values.requestedOutputTokens));
+  return values.maxInputTokens ? Math.min(values.maxInputTokens, remainingContext) : remainingContext;
+}
 export {
   fallbackByokPresets,
   estimateCostUsd,
+  calculateAvailableInputTokens,
   buildByokPresetsFromModelsDev,
   MODELS_DEV_URL
 };

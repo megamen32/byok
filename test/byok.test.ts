@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { assertSafeProviderUrl, publicLookupResult } from '../src/index'
-import { buildByokPresetsFromModelsDev, estimateCostUsd, fallbackByokPresets } from '../src/catalog'
+import { buildByokPresetsFromModelsDev, calculateAvailableInputTokens, estimateCostUsd, fallbackByokPresets } from '../src/catalog'
 
 describe('safe provider URL', () => {
   test('rejects localhost/private/http', async () => {
@@ -19,6 +19,9 @@ describe('safe provider URL', () => {
 describe('catalog', () => {
   test('estimates cost', () => {
     expect(estimateCostUsd(10_000, 2_000, { inputPricePerMillionUsd: 0.3, outputPricePerMillionUsd: 1.2 })).toBeCloseTo(0.0054)
+  })
+  test('calculates available input tokens', () => {
+    expect(calculateAvailableInputTokens({ contextWindow: 100_000, maxInputTokens: 80_000, requestedOutputTokens: 30_000 })).toBe(70_000)
   })
   test('keeps fallback catalog for invalid payload', () => {
     expect(buildByokPresetsFromModelsDev(null)).toHaveLength(fallbackByokPresets.length)
