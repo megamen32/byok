@@ -15,14 +15,23 @@
 </style>
 </head>
 <body>
-<h1>&lt;byok-preset-picker&gt; — встроенный UI (opt-in)</h1>
+<h1>&lt;byok-preset-picker&gt; + &lt;byok-runs-view&gt; — встроенный UI (opt-in)</h1>
 <p>Zero-dependency web component из <code>@bezrabotnyi/byok</code>: карточки пресетов с ценами, тема наследуется через CSS-переменные. Клик — событие <code>byok-select</code>.</p>
 <byok-preset-picker id="picker"></byok-preset-picker>
 <output id="choice">Выберите пресет…</output>
+<h2 style="margin-top:32px">Траектория прогонов</h2>
+<byok-runs-view id="runs"></byok-runs-view>
 <script type="module">
   import { defineByokPresetPicker, BYOK_FORM_FIELDS } from './dist/ui.js'
+  import { defineByokRunsView } from './dist/runs-ui.js'
+  import { ByokLedger } from './dist/ledger.js'
   import { fetchByokCatalogResponse, previewByokPresets } from './dist/catalog.js'
   defineByokPresetPicker()
+  defineByokRunsView()
+  const demoLedger = new ByokLedger({ persist: false })
+  const seedRuns = ['qwen3.8-max', 'kimi-k2.6', 'glm-5.1'].map((model, i) => demoLedger.record({ userId: 'demo', taskId: 'seed-' + i, model, usage: { inputTokens: 1000 + i * 100, noCacheInputTokens: 1000 + i * 100, cacheReadTokens: null, cacheWriteTokens: null, outputTokens: 300 + i * 50, totalTokens: null } }))
+  document.getElementById('runs').setAttribute('runs', JSON.stringify(seedRuns))
+  document.getElementById('runs').setAttribute('totals', JSON.stringify(demoLedger.totals({ userId: 'demo' })))
   const catalog = await fetchByokCatalogResponse()
   const picker = document.getElementById('picker')
   picker.setAttribute('presets', JSON.stringify(previewByokPresets(catalog.presets)))

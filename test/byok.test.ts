@@ -109,3 +109,45 @@ describe('showcase presets', () => {
     }
   })
 })
+
+describe('cost ledger', () => {
+  test('records usage, auto-prices from the dataset, filters and totals', async () => {
+    const { ByokLedger, findShowcasePricing } = await import('../src/ledger')
+    const pricing = findShowcasePricing('qwen3.8-max')!
+    expect(pricing.inputPricePerMillionUsd).toBeGreaterThan(0)
+    const ledger = new ByokLedger({ persist: true })
+    ledger.record({ userId: 'u1', taskId: 't1', model: 'qwen3.8-max', usage: { inputTokens: 1_000_000, noCacheInputTokens: 1_000_000, cacheReadTokens: null, cacheWriteTokens: null, outputTokens: 1_000_000, totalTokens: 2_000_000 } as never })
+    ledger.record({ userId: 'u1', taskId: 't2', model: 'qwen3.8-max', usage: { inputTokens: 500_000, noCacheInputTokens: 500_000, cacheReadTokens: null, cacheWriteTokens: null, outputTokens: 0, totalTokens: 500_000 } as never })
+    ledger.record({ userId: 'u2', taskId: 't1', model: 'unknown-model', usage: null })
+    expect(ledger.entries({ taskId: 't1' }).length).toBe(2)
+    const totals = ledger.totals({ userId: 'u1' })
+    expect(totals.calls).toBe(2)
+    // 1M*2.6 + 1M*7.8 = 10.4 and 0.5M*2.6 = 1.3 → 11.7
+    expect(totals.costUsd).toBeCloseTo(11.7, 3)
+    expect(totals.costUsdKnown).toBe(true)
+  })
+
+  test('persist=false forgets everything and file ledger round-trips', async () => {
+    const { ByokLedger } = await import('../src/ledger')
+    const forgetful = new ByokLedger({ persist: false })
+    forgetful.record({ model: 'm' })
+    expect(forgetful.entries().length).toBe(0)
+    const file = `/tmp/byok-ledger-test-${Date.now()}.jsonl`
+    const disk = new ByokLedger({ persist: true, file })
+    disk.record({ userId: 'u1', taskId: 't9', model: 'glm-5.1' })
+    const reloaded = new ByokLedger({ persist: true, file })
+    expect(reloaded.entries({ taskId: 't9' }).length).toBe(1)
+  })
+
+  test('runs table renders rows, totals and escapes html', async () => {
+    const { renderRunsTable } = await import('../src/runs-ui')
+    const html = renderRunsTable([
+      { id: '1', ts: '2026-09-05T19:00:00Z', userId: 'u1', taskId: '<задача>', sessionId: '', model: 'kimi-k2.6', providerHost: 'api.moonshot.ai', inputTokens: 120, outputTokens: 30, cacheReadTokens: null, cacheWriteTokens: null, totalTokens: 150, costUsd: 0.0031, durationMs: 1400, ok: true },
+      { id: '2', ts: '2026-09-05T19:01:00Z', userId: 'u1', taskId: 't', sessionId: '', model: 'x', providerHost: '', inputTokens: null, outputTokens: null, cacheReadTokens: null, cacheWriteTokens: null, totalTokens: null, costUsd: null, durationMs: 500, ok: false, error: 'boom' },
+    ], { calls: 2, inputTokens: 120, outputTokens: 30, costUsd: 0.0031, costUsdKnown: true })
+    expect(html).toContain('&lt;задача&gt;')
+    expect(html).toContain('2 прогонов')
+    expect(html).toContain('byok-runs__row--error')
+    expect(renderRunsTable([])).toContain('byok-empty')
+  })
+})

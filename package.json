@@ -20,11 +20,13 @@
       "import": "./dist/catalog.js"
     },
     "./ui": "./dist/ui.js",
-    "./showcase": "./dist/showcase.js"
+    "./showcase": "./dist/showcase.js",
+    "./ledger": "./dist/ledger.js",
+    "./runs-ui": "./dist/runs-ui.js"
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "bun run clean && bun build src/index.ts src/catalog.ts src/ui.ts src/showcase.ts --outdir dist --target node --format esm --external '*' && cp -r src/data dist/data && tsc -p tsconfig.json",
+    "build": "bun run clean && bun build src/index.ts src/catalog.ts src/ui.ts src/showcase.ts src/ledger.ts src/runs-ui.ts --outdir dist --target node --format esm --external '*' && cp -r src/data dist/data && tsc -p tsconfig.json",
     "test": "bun test",
     "prepack": "bun run build && bun test"
   },
