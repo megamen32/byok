@@ -61,7 +61,9 @@ export type ByokLedgerTotals = {
     costRub: number;
     fxRate: number | null;
 };
-/** Auto-pricing from the bundled compareai dataset by model display name. */
+/** Auto-pricing from the bundled compareai dataset; fuzzy on naming
+ * ("MiniMax-M3" ≈ "minimax-m3" ≈ "MiniMax: MiniMax M3"). Cache reads are
+ * conservatively priced as full input until the dataset carries cache rates. */
 export declare function findShowcasePricing(modelId: string): ByokPricing | null;
 export declare class ByokLedger {
     private readonly options;

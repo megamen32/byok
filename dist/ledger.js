@@ -5,9 +5,11 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { runByokModelDetailed } from "./index.js";
 import { calculateUsageCostUsd } from "./catalog.js";
 import modelsData from "./data/models.json";
+var pricingKey = (value) => value.toLowerCase().replace(/^[a-z0-9 .:-]+:\s*/, "").replace(/[^a-z0-9]/g, "");
+var showcasePricingIndex = new Map(modelsData.models.map((row) => [pricingKey(row.display), row]));
 function findShowcasePricing(modelId) {
-  const row = modelsData.models.find((item) => item.display === modelId);
-  return row ? { inputPricePerMillionUsd: row.inputUsd, cacheReadPricePerMillionUsd: null, cacheWritePricePerMillionUsd: null, outputPricePerMillionUsd: row.outputUsd } : null;
+  const row = showcasePricingIndex.get(pricingKey(modelId));
+  return row ? { inputPricePerMillionUsd: row.inputUsd, cacheReadPricePerMillionUsd: row.inputUsd, cacheWritePricePerMillionUsd: row.inputUsd, outputPricePerMillionUsd: row.outputUsd } : null;
 }
 
 class ByokLedger {

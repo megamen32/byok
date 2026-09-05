@@ -203,3 +203,13 @@ describe('fx and ruble pricing', () => {
     }
   })
 })
+
+describe('fuzzy auto-pricing', () => {
+  test('matches MiniMax-M3 across dataset naming and prices cache reads', async () => {
+    const { findShowcasePricing } = await import('../src/ledger')
+    const pricing = findShowcasePricing('MiniMax-M3')!
+    expect(pricing).toBeTruthy()
+    expect(pricing.outputPricePerMillionUsd).toBeGreaterThan(0)
+    expect(pricing.cacheReadPricePerMillionUsd).toBe(pricing.inputPricePerMillionUsd)
+  })
+})

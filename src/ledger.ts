@@ -75,11 +75,21 @@ export type ByokLedgerTotals = {
   fxRate: number | null
 }
 
-/** Auto-pricing from the bundled compareai dataset by model display name. */
+const pricingKey = (value: string) => value.toLowerCase().replace(/^[a-z0-9 .:-]+:\s*/, '').replace(/[^a-z0-9]/g, '')
+
+const showcasePricingIndex = new Map<string, { inputUsd: number; outputUsd: number }>(
+  (modelsData.models as Array<{ display: string; inputUsd: number; outputUsd: number }>)
+    .map((row) => [pricingKey(row.display), row]),
+)
+
+/** Auto-pricing from the bundled compareai dataset; fuzzy on naming
+ * ("MiniMax-M3" ≈ "minimax-m3" ≈ "MiniMax: MiniMax M3"). Cache reads are
+ * conservatively priced as full input until the dataset carries cache rates. */
 export function findShowcasePricing(modelId: string): ByokPricing | null {
-  const row = (modelsData.models as Array<{ display: string; inputUsd: number; outputUsd: number }>)
-    .find((item) => item.display === modelId)
-  return row ? { inputPricePerMillionUsd: row.inputUsd, cacheReadPricePerMillionUsd: null, cacheWritePricePerMillionUsd: null, outputPricePerMillionUsd: row.outputUsd } : null
+  const row = showcasePricingIndex.get(pricingKey(modelId))
+  return row
+    ? { inputPricePerMillionUsd: row.inputUsd, cacheReadPricePerMillionUsd: row.inputUsd, cacheWritePricePerMillionUsd: row.inputUsd, outputPricePerMillionUsd: row.outputUsd }
+    : null
 }
 
 export class ByokLedger {
