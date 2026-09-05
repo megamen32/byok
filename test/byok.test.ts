@@ -50,3 +50,40 @@ describe('preset preview', () => {
     expect(response.presets.length).toBeGreaterThan(3)
   })
 })
+
+describe('preset UI', () => {
+  test('renderPresetCards renders cards with prices and escapes html', async () => {
+    const { renderPresetCards } = await import('../src/ui')
+    const cards = renderPresetCards([
+      { id: 'minimax', label: 'MiniMax <опасно>', description: 'd', apiFormat: 'anthropic', baseUrl: 'https://api.minimax.io/anthropic/v1', modelId: 'MiniMax-M3', contextWindow: 1048576, inputPricePerMillionUsd: 0.3, cacheReadPricePerMillionUsd: null, outputPricePerMillionUsd: 1.2, priceLabel: '$0.3 / $1.2 за 1M токенов' },
+    ], { selectedId: 'minimax', showContext: true })
+    expect(cards).toContain('byok-card--selected')
+    expect(cards).toContain('MiniMax &lt;опасно&gt;')
+    expect(cards).toContain('$0.3 / $1.2 за 1M токенов')
+    expect(cards).toContain('1 048K контекст')
+  })
+
+  test('renderPresetCards empty hint', async () => {
+    const { renderPresetCards } = await import('../src/ui')
+    expect(renderPresetCards([])).toContain('byok-empty')
+  })
+
+  test('BYOK_FORM_FIELDS covers every api format', async () => {
+    const { BYOK_FORM_FIELDS } = await import('../src/ui')
+    for (const format of ['chat-completions', 'anthropic', 'responses']) {
+      const names = BYOK_FORM_FIELDS[format].map((field) => field.name)
+      expect(names).toContain('base_url')
+      expect(names).toContain('model_id')
+      expect(names).toContain('api_key')
+    }
+  })
+
+  test('defineByokPresetPicker registers once', async () => {
+    const { defineByokPresetPicker } = await import('../src/ui')
+    const defined: string[] = []
+    const fakeRegistry = { get: (name: string) => defined.includes(name), define: (name: string) => defined.push(name) } as unknown as CustomElementRegistry
+    defineByokPresetPicker(fakeRegistry)
+    defineByokPresetPicker(fakeRegistry)
+    expect(defined).toEqual(['byok-preset-picker'])
+  })
+})

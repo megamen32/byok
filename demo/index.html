@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>byok preset picker — demo</title>
+<style>
+  :root {
+    --byok-border: #2b3554; --byok-accent: #6d7cff;
+    --byok-selected-bg: rgba(109, 124, 255, .12);
+  }
+  body { background: #0b1020; color: #edf2ff; font: 14px/1.4 system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 20px; }
+  output { display: block; margin-top: 12px; font-size: 12px; opacity: .8; min-height: 3em; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>&lt;byok-preset-picker&gt; — встроенный UI (opt-in)</h1>
+<p>Zero-dependency web component из <code>@bezrabotnyi/byok</code>: карточки пресетов с ценами, тема наследуется через CSS-переменные. Клик — событие <code>byok-select</code>.</p>
+<byok-preset-picker id="picker"></byok-preset-picker>
+<output id="choice">Выберите пресет…</output>
+<script type="module">
+  import { defineByokPresetPicker, BYOK_FORM_FIELDS } from './dist/ui.js'
+  import { fetchByokCatalogResponse, previewByokPresets } from './dist/catalog.js'
+  defineByokPresetPicker()
+  const catalog = await fetchByokCatalogResponse()
+  const picker = document.getElementById('picker')
+  picker.setAttribute('presets', JSON.stringify(previewByokPresets(catalog.presets)))
+  picker.addEventListener('byok-select', (event) => {
+    const preset = event.detail
+    const fields = BYOK_FORM_FIELDS[preset.apiFormat] || BYOK_FORM_FIELDS['chat-completions']
+    document.getElementById('choice').textContent =
+      preset.label + ' → ' + preset.baseUrl + ' · ' + preset.modelId +
+      '\nформа для этого формата: ' + fields.map((f) => f.label).join(', ')
+  })
+</script>
+</body>
+</html>

@@ -18,11 +18,12 @@
     "./catalog": {
       "types": "./dist/catalog.d.ts",
       "import": "./dist/catalog.js"
-    }
+    },
+    "./ui": "./dist/ui.js"
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "bun run clean && bun build src/index.ts src/catalog.ts --outdir dist --target node --format esm --external '*' && tsc -p tsconfig.json",
+    "build": "bun run clean && bun build src/index.ts src/catalog.ts src/ui.ts --outdir dist --target node --format esm --external '*' && tsc -p tsconfig.json",
     "test": "bun test",
     "prepack": "bun run build && bun test"
   },
