@@ -30,3 +30,23 @@ describe('catalog', () => {
     expect(buildByokPresetsFromModelsDev(null)).toHaveLength(fallbackByokPresets.length)
   })
 })
+
+describe('preset preview', () => {
+  test('previewByokPresets renders price labels', async () => {
+    const { previewByokPresets, fallbackByokPresets } = await import('../src/catalog')
+    const cards = previewByokPresets(fallbackByokPresets)
+    const minimax = cards.find((card) => card.id === 'minimax')!
+    expect(minimax.modelId).toBe('MiniMax-M3')
+    expect(minimax.priceLabel).toContain('$0.3')
+    expect(minimax.priceLabel).toContain('$1.2')
+    const custom = cards.find((card) => card.id === 'custom')!
+    expect(custom.priceLabel).toBe('цены недоступны')
+  })
+
+  test('fetchByokCatalogResponse falls back when models.dev is unreachable', async () => {
+    const { fetchByokCatalogResponse } = await import('../src/catalog')
+    const response = await fetchByokCatalogResponse(60_000, async () => { throw new Error('offline') })
+    expect(response.source).toBe('bundled-fallback')
+    expect(response.presets.length).toBeGreaterThan(3)
+  })
+})

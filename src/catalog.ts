@@ -111,3 +111,66 @@ export function calculateAvailableInputTokens(values: {
   const remainingContext = Math.max(0, values.contextWindow - Math.max(0, values.requestedOutputTokens))
   return values.maxInputTokens ? Math.min(values.maxInputTokens, remainingContext) : remainingContext
 }
+
+// --- preset preview (compareai-style cards) ---------------------------------
+
+export type ByokPresetPreview = {
+  id: string
+  label: string
+  description: string
+  apiFormat: ByokApiFormat
+  baseUrl: string
+  modelId: string
+  contextWindow: number | null
+  inputPricePerMillionUsd: number | null
+  cacheReadPricePerMillionUsd: number | null
+  outputPricePerMillionUsd: number | null
+  priceLabel: string  // "$0.30 / $1.20 за 1M токенов" | "цены недоступны"
+  note?: string
+}
+
+/** Project presets into compact UI cards with a human price line. */
+export function previewByokPresets(presets: ByokPreset[]): ByokPresetPreview[] {
+  return presets.map((preset) => ({
+    id: preset.id,
+    label: preset.label,
+    description: preset.description,
+    apiFormat: preset.apiFormat,
+    baseUrl: preset.baseUrl,
+    modelId: preset.modelId,
+    contextWindow: preset.contextWindow,
+    inputPricePerMillionUsd: preset.inputPricePerMillionUsd,
+    cacheReadPricePerMillionUsd: preset.cacheReadPricePerMillionUsd,
+    outputPricePerMillionUsd: preset.outputPricePerMillionUsd,
+    priceLabel: preset.inputPricePerMillionUsd != null && preset.outputPricePerMillionUsd != null
+      ? `$${preset.inputPricePerMillionUsd} / $${preset.outputPricePerMillionUsd} за 1M токенов`
+      : 'цены недоступны',
+    note: preset.note,
+  }))
+}
+
+let catalogCache: { response: ByokCatalogResponse; expiresAt: number } | null = null
+
+/** Fetch the models.dev catalog (cached) and fall back to bundled presets. */
+export async function fetchByokCatalogResponse(
+  ttlMs = 3_600_000,
+  fetcher: (url: string) => Promise<unknown> = (url) => fetch(url).then((response) => response.json()),
+): Promise<ByokCatalogResponse> {
+  const now = Date.now()
+  if (catalogCache && catalogCache.expiresAt > now) return catalogCache.response
+  const fallback: ByokCatalogResponse = {
+    presets: fallbackByokPresets.map((preset) => ({ ...preset })),
+    source: 'bundled-fallback', sourceUrl: MODELS_DEV_URL, fetchedAt: new Date().toISOString(),
+  }
+  try {
+    const payload = await fetcher(MODELS_DEV_URL)
+    const response: ByokCatalogResponse = {
+      presets: buildByokPresetsFromModelsDev(payload),
+      source: 'models.dev', sourceUrl: MODELS_DEV_URL, fetchedAt: new Date().toISOString(),
+    }
+    catalogCache = { response, expiresAt: now + ttlMs }
+    return response
+  } catch {
+    return fallback
+  }
+}
