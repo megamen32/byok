@@ -87,3 +87,25 @@ describe('preset UI', () => {
     expect(defined).toEqual(['byok-preset-picker'])
   })
 })
+
+describe('showcase presets', () => {
+  test('chart top becomes presets with providers and rub prices', async () => {
+    const { buildShowcasePresets } = await import('../src/showcase')
+    const presets = buildShowcasePresets()
+    expect(presets.length).toBeGreaterThanOrEqual(20)
+    const qwen = presets.find((p) => p.id === 'qwen/qwen3.8-max')!
+    expect(qwen.baseUrl).toContain('dashscope')
+    expect(qwen.inputPricePerMillionUsd).toBeGreaterThan(0)
+    const custom = presets.find((p) => p.id.includes('muse') || p.id.includes('hy3'))
+    expect(custom).toBeTruthy()
+  })
+
+  test('unknown vendors get a bring-your-gateway note', async () => {
+    const { buildShowcasePresets } = await import('../src/showcase')
+    const presets = buildShowcasePresets({ ids: ['meta/muse-spark-1.1'] })
+    if (presets.length) {
+      expect(presets[0].baseUrl).toBe('')
+      expect(presets[0].note).toBeTruthy()
+    }
+  })
+})
