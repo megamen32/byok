@@ -19,11 +19,18 @@ export type ByokLedgerRecord = {
     cacheWriteTokens: number | null;
     totalTokens: number | null;
     costUsd: number | null;
+    costRub: number | null;
+    fxRate: number | null;
     durationMs: number;
     ok: boolean;
     error?: string;
     promptPreview?: string;
     completionPreview?: string;
+    /** Full transcript (persistFull, on by default). */
+    system?: string;
+    prompt?: string;
+    reasoning?: string;
+    completion?: string;
 };
 export type ByokLedgerOptions = {
     /** Запоминать прогоны или нет (default true). */
@@ -34,6 +41,10 @@ export type ByokLedgerOptions = {
     keep?: number;
     /** Preview trimming for prompt/completion (default 200 chars). */
     maxPreviewChars?: number;
+    /** Store full transcripts (system/prompt/reasoning/completion). Default true. */
+    persistFull?: boolean;
+    /** USD→RUB cache file for the daily CBR rate. */
+    fxFile?: string;
 };
 export type ByokLedgerFilter = {
     userId?: string;
@@ -47,6 +58,8 @@ export type ByokLedgerTotals = {
     outputTokens: number;
     costUsd: number;
     costUsdKnown: boolean;
+    costRub: number;
+    fxRate: number | null;
 };
 /** Auto-pricing from the bundled compareai dataset by model display name. */
 export declare function findShowcasePricing(modelId: string): ByokPricing | null;
@@ -66,10 +79,13 @@ export declare class ByokLedger {
         durationMs?: number;
         ok?: boolean;
         error?: string;
+        system?: string;
         prompt?: string;
         completion?: string;
+        reasoning?: string;
         ts?: string;
-    }): ByokLedgerRecord;
+        fxRate?: number | null;
+    }): Promise<ByokLedgerRecord>;
     entries(filter?: ByokLedgerFilter): ByokLedgerRecord[];
     totals(filter?: ByokLedgerFilter): ByokLedgerTotals;
     private ensureLoaded;

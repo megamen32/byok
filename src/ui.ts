@@ -21,7 +21,7 @@ export function renderPresetCards(previews: ByokPresetPreview[], options: ByokPr
   if (!previews.length) return `<p class="byok-empty">${esc(options.emptyHint ?? 'Нет доступных пресетов')}</p>`
   const cards = previews.map((preset) => {
     const context = options.showContext && preset.contextWindow
-      ? `<span class="byok-card__context" title="Контекст">${(preset.contextWindow / 1000).toLocaleString('ru-RU')}K контекст</span>`
+      ? `<span class="byok-card__context" title="Контекст">${Math.floor(preset.contextWindow / 1000).toLocaleString('ru-RU')}K контекст</span>`
       : ''
     const note = preset.note ? `<span class="byok-card__note" title="${esc(preset.note)}">!</span>` : ''
     return `

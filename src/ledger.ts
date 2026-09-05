@@ -2,6 +2,7 @@
 // priced automatically (explicit prices, else the showcase dataset) and made
 // queryable for wallets and run views. persist:false = "не запоминать".
 import { randomUUID } from 'node:crypto'
+import { usdRubRate, usdToRub } from './fx.js'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 import { runByokModelDetailed, type ByokConfig, type ByokUsage, type RunByokOptions } from './index.js'
 import { calculateUsageCostUsd } from './catalog.js'
@@ -28,11 +29,18 @@ export type ByokLedgerRecord = {
   cacheWriteTokens: number | null
   totalTokens: number | null
   costUsd: number | null
+  costRub: number | null
+  fxRate: number | null
   durationMs: number
   ok: boolean
   error?: string
   promptPreview?: string
   completionPreview?: string
+  /** Full transcript (persistFull, on by default). */
+  system?: string
+  prompt?: string
+  reasoning?: string
+  completion?: string
 }
 
 export type ByokLedgerOptions = {
@@ -44,6 +52,10 @@ export type ByokLedgerOptions = {
   keep?: number
   /** Preview trimming for prompt/completion (default 200 chars). */
   maxPreviewChars?: number
+  /** Store full transcripts (system/prompt/reasoning/completion). Default true. */
+  persistFull?: boolean
+  /** USD→RUB cache file for the daily CBR rate. */
+  fxFile?: string
 }
 
 export type ByokLedgerFilter = {
@@ -59,6 +71,8 @@ export type ByokLedgerTotals = {
   outputTokens: number
   costUsd: number
   costUsdKnown: boolean
+  costRub: number
+  fxRate: number | null
 }
 
 /** Auto-pricing from the bundled compareai dataset by model display name. */
@@ -74,16 +88,17 @@ export class ByokLedger {
   private loaded = false
 
   constructor(options: ByokLedgerOptions = { persist: true }) {
-    this.options = { keep: 500, maxPreviewChars: 200, ...options }
+    this.options = { keep: 500, maxPreviewChars: 200, persistFull: true, ...options }
   }
 
-  record(entry: {
+  async record(entry: {
     userId?: string; taskId?: string; sessionId?: string
     model: string; providerHost?: string
     usage?: ByokUsage | null; pricing?: ByokPricing | null
     durationMs?: number; ok?: boolean; error?: string
-    prompt?: string; completion?: string; ts?: string
-  }): ByokLedgerRecord {
+    system?: string; prompt?: string; completion?: string; reasoning?: string
+    ts?: string; fxRate?: number | null
+  }): Promise<ByokLedgerRecord> {
     const usage = entry.usage ?? { inputTokens: null, noCacheInputTokens: null, cacheReadTokens: null, cacheWriteTokens: null, outputTokens: null, totalTokens: null }
     const pricing = entry.pricing ?? findShowcasePricing(entry.model)
     const costUsd = pricing ? calculateUsageCostUsd({
@@ -98,7 +113,15 @@ export class ByokLedger {
       cacheWritePricePerMillionUsd: pricing.cacheWritePricePerMillionUsd,
       outputPricePerMillionUsd: pricing.outputPricePerMillionUsd,
     } as never) : null
+    let fxRate = entry.fxRate ?? null
+    if (costUsd != null && fxRate === null && this.options.fxFile !== undefined) {
+      fxRate = (await usdRubRate({ file: this.options.fxFile })).usdRub
+    }
     const preview = (value?: string) => value ? value.slice(0, this.options.maxPreviewChars!) : undefined
+    const full = this.options.persistFull ? {
+      system: entry.system, prompt: entry.prompt,
+      reasoning: entry.reasoning, completion: entry.completion,
+    } : {}
     const record: ByokLedgerRecord = {
       id: randomUUID(),
       ts: entry.ts ?? new Date().toISOString(),
@@ -107,9 +130,12 @@ export class ByokLedger {
       inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
       cacheReadTokens: usage.cacheReadTokens, cacheWriteTokens: usage.cacheWriteTokens,
       totalTokens: usage.totalTokens,
-      costUsd, durationMs: entry.durationMs ?? 0,
+      costUsd, costRub: usdToRub(costUsd, fxRate),
+      fxRate,
+      durationMs: entry.durationMs ?? 0,
       ok: entry.ok ?? true, error: entry.error,
       promptPreview: preview(entry.prompt), completionPreview: preview(entry.completion),
+      ...full,
     }
     if (this.options.persist) {
       this.ensureLoaded()
@@ -133,12 +159,15 @@ export class ByokLedger {
   totals(filter: ByokLedgerFilter = {}): ByokLedgerTotals {
     const list = this.entries({ ...filter, limit: undefined })
     const known = list.filter((item) => item.costUsd != null)
+    const rubKnown = list.filter((item) => item.costRub != null)
     return {
       calls: list.length,
       inputTokens: list.reduce((sum, item) => sum + (item.inputTokens ?? 0), 0),
       outputTokens: list.reduce((sum, item) => sum + (item.outputTokens ?? 0), 0),
       costUsd: known.reduce((sum, item) => sum + (item.costUsd ?? 0), 0),
       costUsdKnown: list.length > 0 && known.length === list.length,
+      costRub: rubKnown.reduce((sum, item) => sum + (item.costRub ?? 0), 0),
+      fxRate: list.find((item) => item.fxRate != null)?.fxRate ?? null,
     }
   }
 
@@ -174,7 +203,10 @@ export async function runByokModelTracked(
 ): Promise<{ text: string; usage: ByokUsage; costUsd: number | null; record: ByokLedgerRecord }> {
   const ledger = context.ledger ?? new ByokLedger({ persist: false })
   const started = Date.now()
-  const prompt = typeof input === 'string' ? input : (input.prompt ?? '')
+  const asOptions = typeof input === 'string' ? { prompt: input } : input
+  const prompt = asOptions.prompt ?? ''
+  const system = asOptions.system ?? (asOptions.messages ?? []).find((message) => message.role === 'system')
+  const systemText = typeof system === 'string' ? system : system && typeof system === 'object' && 'content' in system ? String((system as { content: unknown }).content) : ''
   try {
     const result = await runByokModelDetailed(config, input, { fetch: context.fetch, timeoutMs: context.timeoutMs })
     const cost = context.pricing ?? findShowcasePricing(config.modelId)
@@ -185,22 +217,26 @@ export async function runByokModelTracked(
       cacheWriteTokens: result.usage.cacheWriteTokens,
       outputTokens: result.usage.outputTokens,
     }, cost as never) : null
-    const record = ledger.record({
+    const think = result.text.match(/<think>([\s\S]*?)<\/think>/)
+    const reasoning = think ? think[1].trim() : undefined
+    const cleanText = think ? result.text.replace(/<think>[\s\S]*?<\/think>/, '').trim() : result.text
+    const record = await ledger.record({
       userId: context.userId, taskId: context.taskId, sessionId: context.sessionId,
       model: config.modelId, providerHost: new URL(config.baseUrl).hostname,
       usage: result.usage, pricing: context.pricing ?? null,
       durationMs: Date.now() - started, ok: true,
-      prompt, completion: result.text,
+      system: systemText || undefined, prompt: prompt || undefined,
+      reasoning, completion: cleanText,
     })
     return { text: result.text, usage: result.usage, costUsd, record }
   } catch (error) {
-    ledger.record({
+    await ledger.record({
       userId: context.userId, taskId: context.taskId, sessionId: context.sessionId,
       model: config.modelId, providerHost: (() => { try { return new URL(config.baseUrl).hostname } catch { return '' } })(),
       usage: null, pricing: context.pricing ?? null,
       durationMs: Date.now() - started, ok: false,
       error: error instanceof Error ? error.message : String(error),
-      prompt,
+      system: systemText || undefined, prompt: prompt || undefined,
     })
     throw error
   }

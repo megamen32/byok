@@ -151,3 +151,55 @@ describe('cost ledger', () => {
     expect(renderRunsTable([])).toContain('byok-empty')
   })
 })
+
+describe('fx and ruble pricing', () => {
+  test('cbr rate cached and converted', async () => {
+    const { usdRubRate, usdToRub } = await import('../src/fx')
+    const rate = await usdRubRate({ fetcher: async () => ({ Valute: { USD: { Value: 91.25 } } }) })
+    expect(rate.usdRub).toBe(91.25)
+    expect(rate.source).toBe('cbr')
+    expect(usdToRub(10.4, 91.25)).toBeCloseTo(949, 0)
+  })
+
+  test('network failure falls back to last cache then constant', async () => {
+    const { usdRubRate, resetFxCache } = await import('../src/fx')
+    resetFxCache()
+    const rate = await usdRubRate({ fetcher: async () => { throw new Error('offline') } })
+    expect(rate.source).toBe('fallback')
+    expect(rate.usdRub).toBeGreaterThan(0)
+  })
+
+  test('ledger records rub cost and full transcript with reasoning', async () => {
+    const { ByokLedger } = await import('../src/ledger')
+    const ledger = new ByokLedger({ persist: true })
+    const record = await ledger.record({
+      userId: 'u1', taskId: 't1', model: 'qwen3.8-max', fxRate: 90,
+      usage: { inputTokens: 1_000_000, noCacheInputTokens: 1_000_000, cacheReadTokens: null, cacheWriteTokens: null, outputTokens: 1_000_000, totalTokens: null } as never,
+      system: 'be brief', prompt: 'скажи привет', reasoning: 'думаю…', completion: 'Привет!',
+    })
+    expect(record.costUsd).toBeCloseTo(10.4, 3)
+    expect(record.costRub).toBeCloseTo(936, 0)
+    expect(record.system).toBe('be brief')
+    expect(record.reasoning).toBe('думаю…')
+    expect(record.completion).toBe('Привет!')
+    const totals = ledger.totals({ userId: 'u1' })
+    expect(totals.costRub).toBeCloseTo(936, 0)
+    expect(totals.fxRate).toBe(90)
+  })
+
+  test('persistFull=false keeps only previews', async () => {
+    const { ByokLedger } = await import('../src/ledger')
+    const ledger = new ByokLedger({ persist: true, persistFull: false })
+    const record = await ledger.record({ model: 'm', prompt: 'x'.repeat(500), completion: 'y'.repeat(500) })
+    expect(record.prompt).toBeUndefined()
+    expect(record.promptPreview!.length).toBe(200)
+  })
+
+  test('run details render transcript sections', async () => {
+    const { renderRunDetails } = await import('../src/runs-ui')
+    const html = renderRunDetails({ id: '1', ts: '2026-09-05T19:00:00Z', userId: 'u1', taskId: 't', sessionId: 's', model: 'kimi-k2.6', providerHost: 'h', inputTokens: 10, outputTokens: 5, cacheReadTokens: null, cacheWriteTokens: null, totalTokens: 15, costUsd: 0.01, costRub: 0.9, fxRate: 90, durationMs: 900, ok: true, system: 'sys', prompt: 'ввод', reasoning: 'мысли <b>', completion: 'ответ' })
+    for (const part of ['Системный промпт', 'Ввод', 'Размышления', 'Ответ', '0.9 ₽', 'мысли &lt;b&gt;']) {
+      expect(html).toContain(part)
+    }
+  })
+})
