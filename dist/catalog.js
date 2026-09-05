@@ -72,7 +72,50 @@ function calculateAvailableInputTokens(values) {
   const remainingContext = Math.max(0, values.contextWindow - Math.max(0, values.requestedOutputTokens));
   return values.maxInputTokens ? Math.min(values.maxInputTokens, remainingContext) : remainingContext;
 }
+function previewByokPresets(presets) {
+  return presets.map((preset) => ({
+    id: preset.id,
+    label: preset.label,
+    description: preset.description,
+    apiFormat: preset.apiFormat,
+    baseUrl: preset.baseUrl,
+    modelId: preset.modelId,
+    contextWindow: preset.contextWindow,
+    inputPricePerMillionUsd: preset.inputPricePerMillionUsd,
+    cacheReadPricePerMillionUsd: preset.cacheReadPricePerMillionUsd,
+    outputPricePerMillionUsd: preset.outputPricePerMillionUsd,
+    priceLabel: preset.inputPricePerMillionUsd != null && preset.outputPricePerMillionUsd != null ? `$${preset.inputPricePerMillionUsd} / $${preset.outputPricePerMillionUsd} за 1M токенов` : "цены недоступны",
+    note: preset.note
+  }));
+}
+var catalogCache = null;
+async function fetchByokCatalogResponse(ttlMs = 3600000, fetcher = (url) => fetch(url).then((response) => response.json())) {
+  const now = Date.now();
+  if (catalogCache && catalogCache.expiresAt > now)
+    return catalogCache.response;
+  const fallback = {
+    presets: fallbackByokPresets.map((preset) => ({ ...preset })),
+    source: "bundled-fallback",
+    sourceUrl: MODELS_DEV_URL,
+    fetchedAt: new Date().toISOString()
+  };
+  try {
+    const payload = await fetcher(MODELS_DEV_URL);
+    const response = {
+      presets: buildByokPresetsFromModelsDev(payload),
+      source: "models.dev",
+      sourceUrl: MODELS_DEV_URL,
+      fetchedAt: new Date().toISOString()
+    };
+    catalogCache = { response, expiresAt: now + ttlMs };
+    return response;
+  } catch {
+    return fallback;
+  }
+}
 export {
+  previewByokPresets,
+  fetchByokCatalogResponse,
   fallbackByokPresets,
   estimateCostUsd,
   calculateUsageCostUsd,

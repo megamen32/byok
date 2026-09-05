@@ -42,3 +42,21 @@ export declare function calculateAvailableInputTokens(values: {
     maxInputTokens: number | null;
     requestedOutputTokens: number;
 }): number | null;
+export type ByokPresetPreview = {
+    id: string;
+    label: string;
+    description: string;
+    apiFormat: ByokApiFormat;
+    baseUrl: string;
+    modelId: string;
+    contextWindow: number | null;
+    inputPricePerMillionUsd: number | null;
+    cacheReadPricePerMillionUsd: number | null;
+    outputPricePerMillionUsd: number | null;
+    priceLabel: string;
+    note?: string;
+};
+/** Project presets into compact UI cards with a human price line. */
+export declare function previewByokPresets(presets: ByokPreset[]): ByokPresetPreview[];
+/** Fetch the models.dev catalog (cached) and fall back to bundled presets. */
+export declare function fetchByokCatalogResponse(ttlMs?: number, fetcher?: (url: string) => Promise<unknown>): Promise<ByokCatalogResponse>;
