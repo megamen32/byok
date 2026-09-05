@@ -151,7 +151,9 @@ export class ByokLedger {
       this.ensureLoaded()
       this.records.unshift(record)
       if (this.records.length > this.options.keep!) this.records.length = this.options.keep!
-      if (this.options.file) appendFileSync(this.options.file, JSON.stringify(record) + '\n')
+      if (this.options.file) {
+        try { appendFileSync(this.options.file, JSON.stringify(record) + '\n') } catch { /* ledger write must never fail the call */ }
+      }
     }
     return record
   }

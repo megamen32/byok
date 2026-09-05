@@ -73,9 +73,12 @@ class ByokLedger {
       this.records.unshift(record);
       if (this.records.length > this.options.keep)
         this.records.length = this.options.keep;
-      if (this.options.file)
-        appendFileSync(this.options.file, JSON.stringify(record) + `
+      if (this.options.file) {
+        try {
+          appendFileSync(this.options.file, JSON.stringify(record) + `
 `);
+        } catch {}
+      }
     }
     return record;
   }
