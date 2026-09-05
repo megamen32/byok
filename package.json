@@ -24,7 +24,7 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "bun run clean && bun build src/index.ts src/catalog.ts src/ui.ts src/showcase.ts --outdir dist --target node --format esm --external '*' && tsc -p tsconfig.json",
+    "build": "bun run clean && bun build src/index.ts src/catalog.ts src/ui.ts src/showcase.ts --outdir dist --target node --format esm --external '*' && cp -r src/data dist/data && tsc -p tsconfig.json",
     "test": "bun test",
     "prepack": "bun run build && bun test"
   },
