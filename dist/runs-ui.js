@@ -12,8 +12,9 @@ function renderRunsTable(runs, totals, options = {}) {
         <span>${tokens(totals.inputTokens)} in / ${tokens(totals.outputTokens)} out</span>
         <span>${money(totals.costUsd)} · ${rub(totals.costRub ?? null)}${totals.costUsdKnown ? "" : " (часть без цен)"}</span>
       </div>` : "";
+  const selectedId = options.selectedId;
   const rows = runs.map((run) => `
-    <tr class="${run.ok ? "" : "byok-runs__row--error"}" title="${esc(run.error || run.promptPreview || "")}">
+    <tr class="byok-runs__row${run.ok ? "" : " byok-runs__row--error"}${selectedId === run.id ? " byok-runs__row--selected" : ""}" data-byok-run-id="${esc(run.id)}" title="${esc(run.error || run.promptPreview || "")}">
       <td class="byok-runs__ts">${esc(run.ts.slice(5, 16).replace("T", " "))}</td>
       <td class="byok-runs__model">${esc(run.model)}</td>
       <td class="byok-runs__task">${esc(run.taskId || run.userId || "—")}</td>
@@ -39,6 +40,9 @@ var BYOK_RUNS_CSS = `
 .byok-runs__table th { text-align: left; font-weight: 600; opacity: .6; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--byok-border, #2b3554); }
 .byok-runs__table td { padding: 4px 8px 4px 0; border-bottom: 1px solid color-mix(in srgb, var(--byok-border, #2b3554) 50%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 .byok-runs__row--error td { color: var(--byok-error, #ff6b6b); }
+.byok-runs__row { cursor: pointer; }
+.byok-runs__row:hover td { background: color-mix(in srgb, var(--byok-accent, #6d7cff) 8%, transparent); }
+.byok-runs__row--selected td { background: color-mix(in srgb, var(--byok-accent, #6d7cff) 14%, transparent); }
 .byok-runs__ts, .byok-runs__num { opacity: .75; font-variant-numeric: tabular-nums; }
 .byok-empty { font-size: 12px; opacity: .6; }
 `;
@@ -49,6 +53,7 @@ function defineByokRunsView(customElements) {
 
   class ByokRunsView extends (typeof HTMLElement !== "undefined" ? HTMLElement : class {
   }) {
+    selectedId = "";
     static get observedAttributes() {
       return ["runs", "totals"];
     }
@@ -60,25 +65,43 @@ function defineByokRunsView(customElements) {
     }
     connectedCallback() {
       this.render();
+      this.addEventListener("click", this.onClick);
+    }
+    disconnectedCallback() {
+      this.removeEventListener("click", this.onClick);
     }
     attributeChangedCallback() {
       if (this.isConnected)
         this.render();
     }
-    render() {
-      let parsedRuns = [];
-      let parsedTotals;
+    onClick = (event) => {
+      const row = event.target?.closest?.("[data-byok-run-id]");
+      if (!row)
+        return;
+      const runId = row.getAttribute("data-byok-run-id") || "";
+      const record = this.currentRuns().find((item) => item.id === runId);
+      if (!record)
+        return;
+      this.selectedId = runId;
+      this.render();
+      this.dispatchEvent(new CustomEvent("byok-run-open", { detail: record, bubbles: true, composed: true }));
+    };
+    currentRuns() {
       try {
         const value = JSON.parse(this.runs);
-        if (Array.isArray(value))
-          parsedRuns = value;
-      } catch {}
+        return Array.isArray(value) ? value : [];
+      } catch {
+        return [];
+      }
+    }
+    render() {
+      let parsedTotals;
       try {
         const value = JSON.parse(this.totals);
         if (value && typeof value === "object")
           parsedTotals = value;
       } catch {}
-      this.innerHTML = `<style>${BYOK_RUNS_CSS}</style>` + renderRunsTable(parsedRuns, parsedTotals);
+      this.innerHTML = `<style>${BYOK_RUNS_CSS}</style>` + renderRunsTable(this.currentRuns(), parsedTotals, { selectedId: this.selectedId });
     }
   }
   target.define("byok-runs-view", ByokRunsView);
