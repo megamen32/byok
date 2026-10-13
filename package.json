@@ -1,6 +1,6 @@
 {
   "name": "@bezrabotnyi/byok",
-  "version": "1.4.0",
+  "version": "1.8.4",
   "description": "Reusable Bring Your Own Key layer for Node.js AI apps: provider presets, pricing metadata, SSRF-safe endpoints, and AI SDK adapters.",
   "type": "module",
   "license": "MIT",
@@ -29,7 +29,8 @@
     "clean": "rm -rf dist",
     "build": "bun run clean && bun build src/index.ts src/catalog.ts src/ui.ts src/showcase.ts src/ledger.ts src/runs-ui.ts src/fx.ts --outdir dist --target node --format esm --external '*' && cp -r src/data dist/data && tsc -p tsconfig.json",
     "test": "bun test",
-    "prepack": "bun run build && bun test"
+    "prepack": "bun run build && bun test",
+    "test:dns": "node --test test/system-dns.node.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.47",

@@ -1,4 +1,4 @@
-import { Resolver } from 'node:dns/promises'
+import { lookup as systemLookup } from 'node:dns/promises'
 import { generateText, type ModelMessage } from 'ai'
 import { createAnthropic, type AnthropicLanguageModelOptions } from '@ai-sdk/anthropic'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
@@ -23,17 +23,9 @@ export type ByokConfig = z.infer<typeof byokConfigSchema>
 type LookupAddress = { address: string; family: number }
 export type ByokLookup = (hostname: string) => Promise<LookupAddress[]>
 
-const publicResolver = new Resolver()
-publicResolver.setServers(['1.1.1.1', '8.8.8.8'])
-const defaultLookup: ByokLookup = async (hostname) => {
-  const [ipv4, ipv6] = await Promise.allSettled([publicResolver.resolve4(hostname), publicResolver.resolve6(hostname)])
-  const addresses: LookupAddress[] = [
-    ...(ipv4.status === 'fulfilled' ? ipv4.value.map((address) => ({ address, family: 4 })) : []),
-    ...(ipv6.status === 'fulfilled' ? ipv6.value.map((address) => ({ address, family: 6 })) : []),
-  ]
-  if (!addresses.length) throw new Error(`Unable to resolve ${hostname} through public DNS`)
-  return addresses
-}
+// Respect the caller host's resolver and regional CDN routing. Public-address
+// validation and connection-time pinning below still prevent private targets.
+const defaultLookup: ByokLookup = hostname => systemLookup(hostname, { all: true })
 
 const blockedHostSuffixes = ['.localhost', '.local', '.internal', '.home', '.lan']
 

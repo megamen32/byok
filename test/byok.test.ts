@@ -60,7 +60,7 @@ describe('preset UI', () => {
     expect(cards).toContain('byok-card--selected')
     expect(cards).toContain('MiniMax &lt;опасно&gt;')
     expect(cards).toContain('$0.3 / $1.2 за 1M токенов')
-    expect(cards).toContain('1 048K контекст')
+    expect(cards).toMatch(/1[ \u00a0\u202f]048K контекст/)
   })
 
   test('renderPresetCards empty hint', async () => {
@@ -198,7 +198,8 @@ describe('fx and ruble pricing', () => {
   test('run details render transcript sections', async () => {
     const { renderRunDetails } = await import('../src/runs-ui')
     const html = renderRunDetails({ id: '1', ts: '2026-09-05T19:00:00Z', userId: 'u1', taskId: 't', sessionId: 's', model: 'kimi-k2.6', providerHost: 'h', inputTokens: 10, outputTokens: 5, cacheReadTokens: null, cacheWriteTokens: null, totalTokens: 15, costUsd: 0.01, costRub: 0.9, fxRate: 90, durationMs: 900, ok: true, system: 'sys', prompt: 'ввод', reasoning: 'мысли <b>', completion: 'ответ' })
-    for (const part of ['Системный промпт', 'Ввод', 'Размышления', 'Ответ', '0.9 ₽', 'мысли &lt;b&gt;']) {
+    expect(html).toMatch(/0\.90?\s₽/)
+    for (const part of ['Системный промпт', 'Ввод', 'Размышления', 'Ответ', 'мысли &lt;b&gt;']) {
       expect(html).toContain(part)
     }
   })
