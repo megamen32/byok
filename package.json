@@ -1,6 +1,6 @@
 {
   "name": "@bezrabotnyi/byok",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "Reusable Bring Your Own Key layer for Node.js AI apps: provider presets, pricing metadata, SSRF-safe endpoints, and AI SDK adapters.",
   "type": "module",
   "license": "MIT",

@@ -1,5 +1,5 @@
 // src/index.ts
-import { Resolver } from "node:dns/promises";
+import { lookup as systemLookup } from "node:dns/promises";
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -17,18 +17,7 @@ var byokConfigSchema = z.object({
   reasoningEffort: z.enum(reasoningEfforts).default("default"),
   maxOutputTokens: z.coerce.number().int().min(1).max(1048576).default(4096)
 });
-var publicResolver = new Resolver;
-publicResolver.setServers(["1.1.1.1", "8.8.8.8"]);
-var defaultLookup = async (hostname) => {
-  const [ipv4, ipv6] = await Promise.allSettled([publicResolver.resolve4(hostname), publicResolver.resolve6(hostname)]);
-  const addresses = [
-    ...ipv4.status === "fulfilled" ? ipv4.value.map((address) => ({ address, family: 4 })) : [],
-    ...ipv6.status === "fulfilled" ? ipv6.value.map((address) => ({ address, family: 6 })) : []
-  ];
-  if (!addresses.length)
-    throw new Error(`Unable to resolve ${hostname} through public DNS`);
-  return addresses;
-};
+var defaultLookup = (hostname) => systemLookup(hostname, { all: true });
 var blockedHostSuffixes = [".localhost", ".local", ".internal", ".home", ".lan"];
 function normalizedIp(address) {
   const withoutBrackets = address.replace(/^\[|\]$/g, "").split("%")[0];

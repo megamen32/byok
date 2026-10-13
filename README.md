@@ -13,7 +13,7 @@ It provides:
 ## Install from GitHub
 
 ```bash
-bun add @bezrabotnyi/byok@github:megamen32/byok#v1.8.4
+bun add @bezrabotnyi/byok@github:megamen32/byok#v1.8.5
 ```
 
 ## Run a model
@@ -69,5 +69,5 @@ HTTPS, public-IP validation, connection-time public-address filtering and
 redirect rejection remain in place. A caller can still supply an explicit
 `dependencies.lookup` for its own tested environment; it is never imposed.
 
-Release1.8.4 fixes MiniMax reachability where forced public DNS selected an
+Release1.8.5 (including the committed distribution) fixes MiniMax reachability where forced public DNS selected an
 unreachable CDN route while the host resolver returned a reachable public IP.
